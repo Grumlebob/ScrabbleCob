@@ -72,20 +72,114 @@ module State =
     let tilesAlreadyPlayed st = st.tilesAlreadyPlayed
 
 module Scrabble =
-    let playGame cstream (handIdToTile: Map<uint32, tile>) (st: State.state) =
+    let playGame cstream (handIdToTile:Map<uint32,Set<char * int>>) (st: State.state) =
 
         let rec aux (st: State.state) =
 
-            forcePrint "HAND PRINT:"
+            forcePrint "HAND PRINT:\n"
             Print.printHand handIdToTile (State.hand st)
 
             //If count is 0. Then first move must be on center tile.
             if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
-                forcePrint "Ready to do first move"
+                forcePrint "Ready to do first move\n"
+                //Do FindMoves with Cood (0,0)
             else
-                forcePrint "I am not first player"
+                forcePrint "I am not first player\n"
 
+            let convertHandToListOfChar (handIdToTile: Map<uint32, 'a>) hand=
+                MultiSet.fold (
+                    fun acc id amountOfTilesOfThisId ->
+                        let (pieces: Set<char*int>) = (Map.find id handIdToTile)
+                        Set.fold (fun setacc (char, pV) ->
+                            //Add char times amountOfTilesOfThisId to acc
+                            let rec recur acc char amountOfTilesOfThisId=
+                                if amountOfTilesOfThisId = 0 then acc
+                                else recur (char :: acc) char (amountOfTilesOfThisId - 1)
+                            recur acc char (int amountOfTilesOfThisId)
+                        ) [] pieces
+                ) [] hand
+            
+            //Hand as chars    
+            let handAsListOfChar = convertHandToListOfChar handIdToTile st.hand
+            //Hand as string
+            let ListOfCharAsString = String.concat "" (List.map (fun x -> string x) handAsListOfChar)
+            
+            let createEveryStringPermutationOfWord (word: string) =
+                let rec loop word =
+                    match word with
+                    | "" -> []
+                    | _ ->
+                        let rec recur acc word =
+                            match word with
+                            | "" -> acc
+                            | _ ->
+                                let newWord = word.Substring(1)
+                                recur (word :: acc) newWord
+                        recur [] word
+                loop word
 
+            let rec permutations (str:string) =
+                match str with
+                | "" -> [""]
+                | _ ->
+                    [ for i = 0 to str.Length - 1 do
+                          for p in permutations (str.Remove(i, 1)) do
+                              yield str.[i..i] + p ]
+
+            let everyStringPermutationOfHand = createEveryStringPermutationOfWord ListOfCharAsString
+            let permutationTest = permutations ListOfCharAsString
+            forcePrint (sprintf "Every string permutation of hand: %A\n" everyStringPermutationOfHand)
+            forcePrint (sprintf "Permutation test: %A\n" permutationTest)
+            
+            let lookupWithDict char (dict:Dict) =
+                let rec loop char (dict:Dict)=
+                    let newDict = Dictionary.step char dict
+                    match newDict with
+                    | Some (foundWord, newDict) ->
+                        forcePrint (sprintf "foundWord: %A\n" foundWord)
+                        forcePrint (sprintf "NewDict: %A\n" newDict)
+                        loop char newDict
+                    | _ ->
+                        forcePrint "Empty"
+                        false
+                loop char dict
+
+            let resultOfLookup = lookupWithDict 'A' st.dict
+            forcePrint (sprintf "Result of lookup: %A\n" resultOfLookup)
+            
+            let lookUpFullWordDict word (dict:Dict) =
+                let lookupResult = Dictionary.lookup word dict
+                match lookupResult with
+                | true ->
+                    forcePrint (sprintf "Found word: %A\n" word)
+                    true
+                | false ->
+                     forcePrint (sprintf "DID NOT FIND WORD: %A\n" word)
+                     false
+            
+            
+            //let findMoves (st: State.state) (iniDict: Dict) (handIdToTile: Map<uint32, 'a>) (iniCoord : coord) (dir: dir)=
+            //    let rec recur (dict: Dict) (hand: MultiSet.MultiSet<uint32>) (wordInPlay: (coord * (uint32 * (char * int))) list) (coord: coord) : (coord * (uint32 * (char * int))) list=
+            //        MultiSet.fold (
+            //            fun acc id amountOfTilesOfThisId ->
+            //                let (pieces: Set<char*int>) = (Map.find id handIdToTile)
+            //                forcePrint (sprintf "acc: %A\n" acc)
+            //                forcePrint (sprintf "Pieces: %A\n" pieces)
+            //                Set.fold (fun setacc (char, pV) ->
+            //                    forcePrint (sprintf "Char: %A\n" char)
+            //                    forcePrint (sprintf "PV: %A\n" pV)
+            //                    forcePrint (sprintf "setacc: %A\n" setacc)  
+            //                    //Add to setacc
+            //                    let newWordInPlay = (coord, (id, (char, pV))) :: wordInPlay
+            //                    forcePrint (sprintf "wordInPlay: %A\n" wordInPlay)
+            //                    wordInPlay
+            //                ) [] pieces
+            //        ) [] hand
+            //    recur iniDict st.hand [] iniCoord
+//
+            //let moveFinder = findMoves st st.dict handIdToTile (0,0) Right
+            //forcePrint (sprintf "MoveFinder: %A\n" moveFinder)
+            
             let input = System.Console.ReadLine()
             let move = RegEx.parseMove input
 
