@@ -12,6 +12,11 @@ type Direction =
     | Up
     | Left
 
+type WhereToAddFixedChar =
+    | Front
+    | Back
+    | DontAdd
+    
 // The RegEx module is only used to parse human input. It is not used for the final product.
 module RegEx =
     open System.Text.RegularExpressions
@@ -144,6 +149,52 @@ module Scrabble =
                 //Coonvert all permutations to strings
                 let allStrings = List.map (fun x -> convertListOfCharsToString x) allPermutations
                 allStrings
+            
+            let convertListOfCharsToEveryPermutationWithFixedCharPlaced (charToPlace: char) (whereToPlace: WhereToAddFixedChar) (charList: (char * uint32 * int) list) : string list=
+                //Place charToPlace at the beginning of every string
+                let addCharToListFront (charToAdd: char) (listOfString: string list) =
+                    listOfString |> List.map (fun str -> (string charToAdd) + str)
+
+                let addCharToListBack (charToAdd: char) (listOfString: string list) =
+                    listOfString |> List.map (fun str -> str + (string charToAdd))
+                    
+                //https://stackoverflow.com/questions/1526046/f-permutations 
+                let rec distribute e = function
+                  | [] -> [[e]]
+                  | x::xs' as xs -> (e::xs)::[for xs in distribute e xs' -> x::xs]
+                
+                //Add charToPlace to the beginning of every list 
+                let rec permute = function
+                  | [] -> [[]]
+                  | e::xs -> List.collect (distribute e) (permute xs)
+                
+                //https://stackoverflow.com/questions/1222185/most-elegant-combinations-of-elements-in-f  
+                let rec comb n l = 
+                    match n, l with
+                    | 0, _ -> [[]]
+                    | _, [] -> []
+                    | k, (x::xs) -> List.map ((@) [x]) (comb (k-1) xs) @ comb k xs
+
+                let convertListOfCharsToString (listOfChars:(char * uint32 * int) list) =
+                    let rec loop acc listOfChars =
+                        match listOfChars with
+                        | [] -> acc
+                        | (c, _, _) :: xs -> loop (acc + string c) xs
+                    loop "" listOfChars
+                
+                //find combinations from length 1 till handsize and save all results to list
+                let allCombinations = List.map (fun x -> comb x charList) (List.init (List.length charList) (fun x -> x + 1)) |> List.concat
+                //Call permute on all combinations
+                let allPermutations = List.map (fun x -> permute x) allCombinations |> List.concat
+                //Coonvert all permutations to strings
+                let allStrings = List.map (fun x -> convertListOfCharsToString x) allPermutations
+                //Place charToPlace at the beginning of every string
+                let finalStrings = 
+                    match whereToPlace with
+                    | Front -> addCharToListFront charToPlace allStrings
+                    | Back -> addCharToListBack charToPlace allStrings
+                    | DontAdd -> allStrings
+                finalStrings
             
             let lookupWordsInDict (words: string list) (dict:Dict) =
                 let rec lookupEveryStringInPermutationTest acc (permutationTest: string list) (dict:Dict) =
@@ -286,19 +337,32 @@ module Scrabble =
             //forcePrint (sprintf "handAsListOfChar: %A\n" handWithFullInfo)
             
             //Every permutation of hand
-            let everyPermutationFoundInDict = lookupWordsInDict (convertListOfCharsToEveryPermutation handWithFullInfo) st.dict
-            //forcePrint (sprintf "Every permutation found in dict: %A\n" everyPermutationFoundInDict)
+            //let everyPermutationFoundInDict = lookupWordsInDict (convertListOfCharsToEveryPermutation handWithFullInfo) st.dict
+            //Her skal logic så være at 'A' er fundet fra listofPossiblePlayCoordinates
+            //Derefter skal front/back vælges alt efter:
+            //FRONT: DOWN RIGHT
+            //BACK: UP LEFT
+            let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' Front handWithFullInfo) st.dict
+            let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' Back handWithFullInfo) st.dict
+            let everyPermutationFoundInDictDontAdd = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' DontAdd handWithFullInfo) st.dict
+            forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
+            forcePrint (sprintf "Every permutation found in dict Back: %A\n" everyPermutationFoundInDictBack)
+            forcePrint (sprintf "Every permutation found in dict DontAdd: %A\n" everyPermutationFoundInDictDontAdd)
             
             //Longest word from every permutation
-            let longestWord = getLongestWordFromResult everyPermutationFoundInDict
-            //forcePrint (sprintf "Longest word: %A\n" longestWord)
+            let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+            let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+            let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
+            forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
+            forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
+            forcePrint (sprintf "Longest word DontAdd: %A\n" longestWordDontAdd)
 
             let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
             //forcePrint (sprintf "listOfPossibleStartCoords: %A\n" listOfPossiblePlayCoords)
 
             if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
                 forcePrint "Ready to do first move\n"
-                checkAllDirectionsAndPlay longestWord (0,0) handWithFullInfo
+                checkAllDirectionsAndPlay longestWordDontAdd (0,0) handWithFullInfo
             else
                 forcePrint "I am not first player\n"
             
