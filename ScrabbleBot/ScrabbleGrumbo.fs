@@ -223,7 +223,7 @@ module Scrabble =
                 getLongestWordFromResult "" resultOfLookupEveryStringInPermutationTest
             
             let checkIfPlacementIsPossible (lenghtToCheck:int) (coord:coord) (direction: Direction) :(bool*Direction)=
-                forcePrint (sprintf "Checking Coord: %A\n" coord)       
+                //forcePrint (sprintf "Checking Coord: %A\n" coord)       
                 let rec checkIfTileIsAlreadyPlayed (playAvailable:bool)(coord:coord) lenghtToCheck =
                     if lenghtToCheck = 0 then
                         (playAvailable, direction)
@@ -261,7 +261,7 @@ module Scrabble =
                                 let newCoord = getNewCoord coord direction
                                 checkIfTileIsAlreadyPlayed playAvailable newCoord (lenghtToCheck - 1)
                         else
-                            forcePrint (sprintf "Both sides are not free\n")
+                            //forcePrint (sprintf "Both sides are not free\n")
                             (false, direction)
                 checkIfTileIsAlreadyPlayed true coord lenghtToCheck
             
@@ -302,6 +302,20 @@ module Scrabble =
                             checkAllDirectionsAndPlay t
                 checkAllDirectionsAndPlay allDirections
 
+            //PlayMoveWithoutCheckingCoords
+            let playMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) (direction: Direction) : (coord * (uint32 * (char * int))) list =
+               //TODO LAV OM TIL AT DEN IKKE SKAL LÆGGE FØRSTE BOGSTAV PÅ COORD
+                let charList = List.ofArray (longestWord.ToCharArray())
+                let rec loop (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
+                    match chars with
+                    | [] -> acc
+                    | h :: t ->
+                        let (char, id, pV) = List.find (fun (c, _, _) -> c = h) handWithFullInfo
+                        let newCoord = getNewCoord currentCoord direction
+                        let newMove = (newCoord), (id, (char, pV))
+                        loop (newMove :: acc) t newCoord
+                loop [] charList startCoord
+            
             //Find some coordinate, where there is room to play.
             let generateListOfPossibleStartCoords =
                 let listOfCoordsFromTilesPlayed = Map.toList st.tilesAlreadyPlayed |> List.map (fun (coord, _) -> coord)
@@ -318,7 +332,7 @@ module Scrabble =
                         let rec checkAllDirections (allDirections:(bool*Direction) list) (acc: (coord * Direction) list)  =
                             match allDirections with
                             | [] ->
-                                forcePrint (sprintf "listOfPossibleStartCoords: %A\n" acc)
+                                //forcePrint (sprintf "listOfPossibleStartCoords: %A\n" acc)
                                 acc
                             | h :: t ->
                                 match h with
@@ -330,46 +344,58 @@ module Scrabble =
                         generateListOfPossibleStartCoords lenghtToCheck t directionsList
                 //TODO HARDCODED LENGHT 7        
                 generateListOfPossibleStartCoords 7 listOfCoordsFromTilesPlayed []
-            
-            
+               
             //Hand as chars*id*pointvalue    
             let handWithFullInfo = convertHandToListWithFullInfo handIdToTile st.hand
             //forcePrint (sprintf "handAsListOfChar: %A\n" handWithFullInfo)
-            
-            //Every permutation of hand
-            //let everyPermutationFoundInDict = lookupWordsInDict (convertListOfCharsToEveryPermutation handWithFullInfo) st.dict
-            //Her skal logic så være at 'A' er fundet fra listofPossiblePlayCoordinates
-            //Derefter skal front/back vælges alt efter:
-            //FRONT: DOWN RIGHT
-            //BACK: UP LEFT
-            let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' Front handWithFullInfo) st.dict
-            let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' Back handWithFullInfo) st.dict
-            let everyPermutationFoundInDictDontAdd = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' DontAdd handWithFullInfo) st.dict
-            forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
-            forcePrint (sprintf "Every permutation found in dict Back: %A\n" everyPermutationFoundInDictBack)
-            forcePrint (sprintf "Every permutation found in dict DontAdd: %A\n" everyPermutationFoundInDictDontAdd)
-            
+   
             //Longest word from every permutation
-            let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
-            let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
-            let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
-            forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
-            forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
-            forcePrint (sprintf "Longest word DontAdd: %A\n" longestWordDontAdd)
-
             let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
             //forcePrint (sprintf "listOfPossibleStartCoords: %A\n" listOfPossiblePlayCoords)
 
             if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
+                forcePrint "GIK IND I FIRST MOVE. BØR KUN SKE 1 GANG"
+                //TODO REPLACE 'A' WITH ACTUAL LETTER
+                let everyPermutationFoundInDictDontAdd = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' DontAdd handWithFullInfo) st.dict
+                forcePrint (sprintf "Every permutation found in dict DontAdd: %A\n" everyPermutationFoundInDictDontAdd)
                 forcePrint "Ready to do first move\n"
+                let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
+                forcePrint (sprintf "Longest word DontAdd: %A\n" longestWordDontAdd)
                 checkAllDirectionsAndPlay longestWordDontAdd (0,0) handWithFullInfo
             else
-                forcePrint "I am not first player\n"
+                //TODO JEG TROR DEN LAVER MOVE FORKERT. DEN BENYTTER IKKE BOGSTAVET, MEN PRØVER AT LÆGGE DET NED???
+                //TODO MÅSKE ER DET NOGET MED PLAYER TURN NUMBER??
+                ////    if (st.playerTurn = st.playerNumber) then
+//        aux st true true
+//    else 
+//        aux st false false
+                forcePrint "GIK IND I NORMAL MOVE"
+                let (coord, direction) = List.head listOfPossiblePlayCoords
+                let CharAtCoord = st.tilesAlreadyPlayed.[coord]
+                let convertUint32ToChar (id:uint32) =
+                    let (char, _, _) = List.find (fun (_, id2, _) -> id = id2) handWithFullInfo
+                    char
+                let charToBuildFrom = convertUint32ToChar CharAtCoord
+                forcePrint (sprintf "CharAtCoord: %A\n" charToBuildFrom)
+                let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
+                let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
+                forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
+                forcePrint (sprintf "Every permutation found in dict Back: %A\n" everyPermutationFoundInDictBack)
+                let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+                let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+                forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
+                forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
+                let move = playMove longestWordFront coord handWithFullInfo direction
+                forcePrint (sprintf "Move sending: %A\n" move)
+                forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE"
+                send cstream (SMPlay move)
+                
+                
             
-            let input = System.Console.ReadLine()
-            let move = RegEx.parseMove input
+            //let input = System.Console.ReadLine()
+            //let move = RegEx.parseMove input
 
-            send cstream (SMPlay move)
+            //send cstream (SMPlay move)
 
             let msg = recv cstream
             //debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
