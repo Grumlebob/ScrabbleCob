@@ -176,6 +176,7 @@ module Scrabble =
                 //Get the longest word from resultOfLookupEveryStringInPermutationTest
                 //Change to get highest points? - Change to validation before?
                 //TODO CHANGE TIL AT DEN KIGGER PÅ POINTS
+                //Behold denne metode, men lav også en der kigger på højeste point.
                 let getLongestWordFromResult (resultOfLookupEveryStringInPermutationTest:string list) =
                     let rec getLongestWordFromResult (acc:string) (resultOfLookupEveryStringInPermutationTest:string list) =
                         match resultOfLookupEveryStringInPermutationTest with
