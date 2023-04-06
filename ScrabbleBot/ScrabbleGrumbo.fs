@@ -113,6 +113,7 @@ module Scrabble =
                                 |> List.append acc
                     ) [] hand
                 
+                //TODO istedet for stringlist kunne den returnere (string*sumOfPoints) list
                 let convertListOfCharsToEveryPermutationWithFixedCharPlaced (charToPlace: char) (whereToPlace: WhereToAddFixedChar) (charList: (char * uint32 * int) list) : string list=
                     //Place charToPlace at the beginning of every string
                     let addCharToListFront (charToAdd: char) (listOfString: string list) =
@@ -174,6 +175,7 @@ module Scrabble =
                 
                 //Get the longest word from resultOfLookupEveryStringInPermutationTest
                 //Change to get highest points? - Change to validation before?
+                //TODO CHANGE TIL AT DEN KIGGER PÅ POINTS
                 let getLongestWordFromResult (resultOfLookupEveryStringInPermutationTest:string list) =
                     let rec getLongestWordFromResult (acc:string) (resultOfLookupEveryStringInPermutationTest:string list) =
                         match resultOfLookupEveryStringInPermutationTest with
@@ -227,22 +229,21 @@ module Scrabble =
                                 //forcePrint (sprintf "Both sides are not free\n")
                                 (false, direction)
                     checkIfTileIsAlreadyPlayed true coord lenghtToCheck
-                
-                let playLongestWord (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) (direction: Direction) : (coord * (uint32 * (char * int))) list =
-                    let charList = List.ofArray (longestWord.ToCharArray())
-                    let rec calculateMove (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
-                        match chars with
-                        | [] -> acc
-                        | h :: t ->
-                            let (char, id, pV) = List.find (fun (c, _, _) -> c = h) handWithFullInfo
-                            let newMove = (currentCoord), (id, (char, pV))
-                            let newCoord = getNewCoord currentCoord direction
-                            calculateMove (newMove :: acc) t newCoord
-                    calculateMove [] charList startCoord
-                
-                
-                //TODO SLET, og lav om til "Play Opening move"
-                let checkAllDirectionsAndPlay (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) =
+         
+                //TODO omdøb til opening move.
+                let checkAndPlayOpeningMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) =
+                    let playLongestWord (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) (direction: Direction) : (coord * (uint32 * (char * int))) list =
+                        let charList = List.ofArray (longestWord.ToCharArray())
+                        let rec calculateMove (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
+                            match chars with
+                            | [] -> acc
+                            | h :: t ->
+                                let (char, id, pV) = List.find (fun (c, _, _) -> c = h) handWithFullInfo
+                                let newMove = (currentCoord), (id, (char, pV))
+                                let newCoord = getNewCoord currentCoord direction
+                                calculateMove (newMove :: acc) t newCoord
+                        calculateMove [] charList startCoord
+                    
                     let checkIfPossibleToTheRight = checkIfPlacementIsPossible longestWord.Length startCoord Right
                     let checkIfPossibleToTheLeft = checkIfPlacementIsPossible longestWord.Length startCoord Down
                     let checkIfPossibleToTheUp = checkIfPlacementIsPossible longestWord.Length startCoord Up
@@ -301,11 +302,11 @@ module Scrabble =
                         | [] -> acc
                         | coord :: t ->
                             let checkCoordRight = checkIfPlacementIsPossible lenghtToCheck coord Right
-                            let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
-                            let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
+                            //let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
+                            //let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
                             let checkCoordDown = checkIfPlacementIsPossible lenghtToCheck coord Down
-                            let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
-                            //let allDirections = [checkCoordRight; checkCoordDown]
+                            //let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
+                            let allDirections = [checkCoordRight; checkCoordDown]
                             let rec checkAllDirections (allDirections:(bool*Direction) list) (acc: (coord * Direction) list)  =
                                 match allDirections with
                                 | [] ->
@@ -331,17 +332,16 @@ module Scrabble =
                     forcePrint "Ready to do first move\n"
                     let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
                     forcePrint (sprintf "Longest word DontAdd: %A\n" longestWordDontAdd)
-                    checkAllDirectionsAndPlay longestWordDontAdd (0,0) handWithFullInfo
+                    checkAndPlayOpeningMove longestWordDontAdd (0,0) handWithFullInfo
                 else
                     forcePrint "GIK IND I NORMAL MOVE\n"
                     let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
                     forcePrint (sprintf "listOfPossibleStartCoords: %A\n" listOfPossiblePlayCoords)
                     let (coord, direction) = List.head listOfPossiblePlayCoords
-                    let shouldAddToFront =
-                        match direction with
-                        | Right -> true
-                        | Down -> true
-                        | _ -> false
+                    let shouldAddToFront = match direction with
+                                       | Right -> true
+                                       | Down -> true
+                                       | _ -> false
                     let convertUint32ToChar2 (id:uint32) : char =
                         let ab = handIdToTile.[id] |> List.ofSeq
                         match ab with
@@ -357,11 +357,12 @@ module Scrabble =
                     let mutable currentLongestWord = ""
                     if shouldAddToFront then
                         let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
-                        forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
+                        //forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
                         let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
                         currentLongestWord <- longestWordFront
                         forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
                     else
+                        //TODO MAKE IT PLAY UP AND LEFT - IT IS OUTCOMMENTED IN generateListOfPossibleStartCoords
                         forcePrint "Playing UP / LEFT - SHOULD BE FIXED."
                         let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
                         let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack

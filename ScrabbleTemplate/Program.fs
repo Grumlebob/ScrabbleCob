@@ -23,6 +23,7 @@ let main argv =
     System.Console.Clear()
 
 
+    //TODO PÅ NORMAL BOARD PRØVER DEN AT SPILLE BOGSTAVER DER GÅR UD OVER PLADEN
     //let board      = ScrabbleUtil.StandardBoard.standardBoard ()
     let board = ScrabbleUtil.InfiniteBoard.infiniteBoard ()
 
