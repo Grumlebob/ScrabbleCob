@@ -201,6 +201,7 @@ module Scrabble =
                             let bothSidesFree = 
                                 match horizontal with
                                 | false ->
+                                    //TODO CHECK BILLEDE I SCRABBLETEMPLATE fejl.PNG - HER SÅ ER DEN IKKE RIGTIG FOR LEFT.
                                     let sideAFree = Map.tryFind (fst coord, snd coord+1) st.tilesAlreadyPlayed
                                     let sideBFree = Map.tryFind (fst coord, snd coord-1) st.tilesAlreadyPlayed
                                     if sideAFree = None && sideBFree = None then
@@ -274,16 +275,16 @@ module Scrabble =
                                          | Left -> false
                                          | Up -> false
                     let lengthOfWord = longestWord.Length
-                    let charList = List.ofArray (longestWord.ToCharArray())
+                    let reverseString (str: string) : string =
+                        let mutable reversedStr = ""
+                        for i = str.Length - 1 downto 0 do
+                            reversedStr <- reversedStr + string(str.[i])
+                        reversedStr
+
                     let rec loop (loopcounter: int) (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
                         match chars with
-                        | _ when loopcounter = lengthOfWord && skipFirstCoord ->
+                        | _ when loopcounter = lengthOfWord ->
                             forcePrint (sprintf "Skipping first coord: %A\n" currentCoord)
-                            forcePrint (sprintf "Current word: %A\n" chars)
-                            forcePrint (sprintf "Word Passing through: %A\n" chars.Tail)
-                            loop (loopcounter-1) acc chars.Tail (getNewCoord currentCoord direction)
-                        | _ when loopcounter = 1 && skipFirstCoord = false ->
-                            forcePrint (sprintf "Skipping last coord: %A\n" currentCoord)
                             forcePrint (sprintf "Current word: %A\n" chars)
                             forcePrint (sprintf "Word Passing through: %A\n" chars.Tail)
                             loop (loopcounter-1) acc chars.Tail (getNewCoord currentCoord direction)
@@ -293,7 +294,14 @@ module Scrabble =
                             let newMove = (currentCoord), (id, (char, pV))
                             let newCoord = getNewCoord currentCoord direction
                             loop (loopcounter-1) (newMove :: acc) t newCoord
-                    loop lengthOfWord [] charList startCoord
+                    
+                    if skipFirstCoord then
+                        let charList = List.ofArray (longestWord.ToCharArray())
+                        loop lengthOfWord [] charList startCoord
+                    else
+                        let reversedWord = reverseString longestWord
+                        let reversedCharList = List.ofArray (reversedWord.ToCharArray())
+                        loop lengthOfWord [] reversedCharList startCoord
                 
                 //Find some coordinate, where there is room to play.
                 let generateListOfPossibleStartCoords =
@@ -303,11 +311,12 @@ module Scrabble =
                         | [] -> acc
                         | coord :: t ->
                             let checkCoordRight = checkIfPlacementIsPossible lenghtToCheck coord Right
-                            //let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
-                            //let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
                             let checkCoordDown = checkIfPlacementIsPossible lenghtToCheck coord Down
-                            //let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
-                            let allDirections = [checkCoordRight; checkCoordDown]
+                            //TODO To disable left/up just outcomment here
+                            let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
+                            let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
+                            let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
+                            //let allDirections = [checkCoordRight; checkCoordDown]
                             let rec checkAllDirections (allDirections:(bool*Direction) list) (acc: (coord * Direction) list)  =
                                 match allDirections with
                                 | [] ->
@@ -364,11 +373,10 @@ module Scrabble =
                         forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
                     else
                         //TODO MAKE IT PLAY UP AND LEFT - IT IS OUTCOMMENTED IN generateListOfPossibleStartCoords
-                        forcePrint "Playing UP / LEFT - SHOULD BE FIXED."
                         let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
                         let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
                         currentLongestWord <- longestWordBack
-                        forcePrint (sprintf "Longest word Front: %A\n" longestWordBack)
+                        forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
                     
                     if currentLongestWord = "" then
                         let handAsList = MultiSet.toList st.hand
