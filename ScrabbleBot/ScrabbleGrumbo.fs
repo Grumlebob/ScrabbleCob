@@ -84,7 +84,7 @@ module Scrabble =
         let rec aux (st: State.state) (myTurn: bool) =
             
             if myTurn then
-                Thread.Sleep(3000)
+                //Thread.Sleep(3000)
                 forcePrint "HAND PRINT:\n"
                 Print.printHand handIdToTile (State.hand st)
                 
@@ -279,10 +279,12 @@ module Scrabble =
                             forcePrint (sprintf "Skipping first coord: %A\n" currentCoord)
                             forcePrint (sprintf "Current word: %A\n" chars)
                             forcePrint (sprintf "Word Passing through: %A\n" chars.Tail)
-                            loop (loopcounter-1) acc chars.Tail currentCoord
+                            loop (loopcounter-1) acc chars.Tail (getNewCoord currentCoord direction)
                         | _ when loopcounter = 1 && skipFirstCoord = false ->
                             forcePrint (sprintf "Skipping last coord: %A\n" currentCoord)
-                            loop (loopcounter-1) acc chars.Tail currentCoord
+                            forcePrint (sprintf "Current word: %A\n" chars)
+                            forcePrint (sprintf "Word Passing through: %A\n" chars.Tail)
+                            loop (loopcounter-1) acc chars.Tail (getNewCoord currentCoord direction)
                         | [] -> acc
                         | h :: t ->
                             let (char, id, pV) = List.find (fun (c, _, _) -> c = h) handWithFullInfo
@@ -294,7 +296,6 @@ module Scrabble =
                 //Find some coordinate, where there is room to play.
                 let generateListOfPossibleStartCoords =
                     let listOfCoordsFromTilesPlayed = Map.toList st.tilesAlreadyPlayed |> List.map (fun (coord, _) -> coord)
-                    forcePrint "generating moves\n"
                     let rec generateListOfPossibleStartCoords (lenghtToCheck: int) (coords: coord list) (acc: (coord * Direction) list)  =
                         match coords with
                         | [] -> acc
@@ -304,10 +305,10 @@ module Scrabble =
                             let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
                             let checkCoordDown = checkIfPlacementIsPossible lenghtToCheck coord Down
                             let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
+                            //let allDirections = [checkCoordRight; checkCoordDown]
                             let rec checkAllDirections (allDirections:(bool*Direction) list) (acc: (coord * Direction) list)  =
                                 match allDirections with
                                 | [] ->
-                                    //forcePrint (sprintf "listOfPossibleStartCoords: %A\n" acc)
                                     acc
                                 | h :: t ->
                                     match h with
@@ -322,21 +323,6 @@ module Scrabble =
                    
                 //Hand as chars*id*pointvalue    
                 let handWithFullInfo = convertHandToListWithFullInfo handIdToTile st.hand
-    
-                
-                //TODO. Den sender forkert play.
-                //Longest word Front: "DADO"
-                //Skipping first coord: (0, 0)
-                //Current word: ['D'; 'A'; 'D'; 'O']
-                //Word Passing through: ['A'; 'D'; 'O']
-                //Move sending: [((0, 2), (15u, ('O', 1))); ((0, 1), (4u, ('D', 2))); ((0, 0), (1u, ('A', 1)))]
-                // (SMPlay
-                //[((0, 2), (15u, ('O', 1))); ((0, 1), (4u, ('D', 2)));
-                // ((0, 0), (1u, ('A', 1)))])
-                // GPEOccupiedTile (('A', 1), (0, 0), ('D', 2))]
-
-                
-                
                 
                 if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
                     forcePrint "Doing opening move\n"
@@ -351,17 +337,14 @@ module Scrabble =
                     let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
                     forcePrint (sprintf "listOfPossibleStartCoords: %A\n" listOfPossiblePlayCoords)
                     let (coord, direction) = List.head listOfPossiblePlayCoords
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE1\n"
-                    let CharAtCoord = st.tilesAlreadyPlayed.[coord]
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE2\n"
-                    let convertUint32ToChar (id:uint32) =
-                        let (char, _, _) = List.find (fun (_, id2, _) -> id = id2) handWithFullInfo
-                        char
-                    //convertuint32Tochar with handIdToTile
+                    let shouldAddToFront =
+                        match direction with
+                        | Right -> true
+                        | Down -> true
+                        | _ -> false
                     let convertUint32ToChar2 (id:uint32) : char =
-                        let ab = handIdToTile.[id]
-                        let abList = List.ofSeq ab
-                        match abList with
+                        let ab = handIdToTile.[id] |> List.ofSeq
+                        match ab with
                         | h::t ->
                             fst h
                         | [x] -> fst x
@@ -369,35 +352,37 @@ module Scrabble =
                             forcePrint "BØR IKKE SKE"
                             failwith "convertUint32ToChar2"
     
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE3\n"
-                    let charToBuildFrom = convertUint32ToChar2 CharAtCoord
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE4\n"
-                    forcePrint (sprintf "CharAtCoord: %A\n" charToBuildFrom)
-                    let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
-                    let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE5\n"
-                    forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
-                    forcePrint (sprintf "Every permutation found in dict Back: %A\n" everyPermutationFoundInDictBack)
-                    let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
-                    let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
-                    forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
-                    forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
-                    let move = playMove longestWordFront coord handWithFullInfo direction
-                    forcePrint (sprintf "Move sending: %A\n" move)
-                    forcePrint "SENDING MOVE TO SERVER GOT SO FAR HERE\n"
-                    send cstream (SMPlay move)
+                    let charToBuildFrom = convertUint32ToChar2 st.tilesAlreadyPlayed.[coord]
+                    forcePrint (sprintf "Direction: %A Coord: %A CharAtCoord: %A\n" direction coord charToBuildFrom)
+                    let mutable currentLongestWord = ""
+                    if shouldAddToFront then
+                        let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
+                        forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
+                        let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+                        currentLongestWord <- longestWordFront
+                        forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
+                    else
+                        forcePrint "Playing UP / LEFT - SHOULD BE FIXED."
+                        let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
+                        let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+                        currentLongestWord <- longestWordBack
+                        forcePrint (sprintf "Longest word Front: %A\n" longestWordBack)
+                    
+                    if currentLongestWord = "" then
+                        let handAsList = MultiSet.toList st.hand
+                        forcePrint (sprintf "Hand exchanging: %A\n" handAsList)
+                        send cstream (SMChange handAsList)
+                    else
+                        let move = playMove currentLongestWord coord handWithFullInfo direction
+                        forcePrint (sprintf "MOVE SENDING TO SERVER: %A\n" move)
+                        send cstream (SMPlay move)
                     
             let msg = recv cstream
 
             match msg with
             | RCM (CMPlaySuccess (ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                //forcePrint "CMPlaySuccess prints: \n"
-                //Move made: 0 0 1A1 0 1 20T1
-                //forcePrint (sprintf "MS: %A\n" ms) //[((0, 0), (1u, ('A', 1))); ((0, 1), (20u, ('T', 1)))] <- Tiles played, remove from hand.
-                //forcePrint (sprintf "Points: %A\n" points) //2
-                //forcePrint (sprintf "NewPieces: %A\n" newPieces) //NewPieces: [(6u, 1u); (14u, 1u)]  <- New tiles gotten in hand
-
+                
                 //SAVE MOVES MADE TO tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
@@ -430,11 +415,6 @@ module Scrabble =
                 aux st' false
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                //forcePrint "CMPlayed prints: \n"
-                //forcePrint (sprintf "pid: %A\n" pid)
-                //forcePrint (sprintf "MS: %A\n" ms)
-                //forcePrint (sprintf "Points: %A\n" points)
-
                 //Add moves ms to tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
@@ -447,9 +427,6 @@ module Scrabble =
                 aux st' true
             | RCM (CMPlayFailed (pid, ms)) ->
                 (* Failed play. Update your state *)
-                //forcePrint "CMPlayFailed prints: \n"
-                //forcePrint (sprintf "pid: %A\n" pid)
-                //forcePrint (sprintf "MS: %A\n" ms)
                 let st' = st // This state needs to be updated
                 aux st' false
             | RCM (CMGameOver _) -> ()
@@ -476,6 +453,23 @@ module Scrabble =
 
                 let st' = { st with playerStatus = changePlayerStatus player }
                 //(player % uint32 (st.playerStatus.Length) + 1u = st.playerNumber)
+                aux st' false
+            
+            | RCM (CMChange (pid, numberOfTiles)) ->
+                forcePrint "CMChange prints: \n"
+                let st' = st // This state needs to be updated
+                aux st' false
+            | RCM (CMChangeSuccess (newTiles)) ->
+                forcePrint "CMChangeSuccess prints: \n"
+                forcePrint (sprintf "NewTiles To Have: %A\n" newTiles)
+                let rec addNewGainedTiles (newPieces: (uint32 * uint32) list) (hand: MultiSet.MultiSet<uint32>) =
+                    match newPieces with
+                    | [] -> hand
+                    | h :: t -> addNewGainedTiles t (MultiSet.addSingle (fst h) hand)
+                //Remove all pieces from hand and change to new ones.
+                let newHand = MultiSet.empty
+                let newHand = addNewGainedTiles newTiles newHand
+                let st' = { st with hand = newHand }
                 aux st' false
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err ->
