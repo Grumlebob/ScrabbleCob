@@ -84,7 +84,7 @@ module Scrabble =
         let rec aux (st: State.state) (myTurn: bool) =
             
             if myTurn then
-                //Thread.Sleep(3000)
+                //Thread.Sleep(2000)
                 forcePrint "HAND PRINT:\n"
                 Print.printHand handIdToTile (State.hand st)
                 
@@ -190,7 +190,6 @@ module Scrabble =
                 
 
                 let checkIfPlacementIsPossible2 (lenghtToCheck:int) (coord:coord) (direction: Direction) :(bool*Direction)=
-                    //forcePrint (sprintf "Checking Coord: %A with Direction: %A \n" coord direction)                    
                     let oneCoordBehindTarget =
                         match direction with
                         | Right -> (fst coord - 1, snd coord)
@@ -199,7 +198,6 @@ module Scrabble =
                         | Down -> (fst coord, snd coord - 1)
                     
                     let moveOneCoord = getNewCoord coord direction
-                    //forcePrint (sprintf "oneCoordBehindTarget: %A \n" oneCoordBehindTarget)
                     
                     let mainCoordsToCheck = 
                         match direction with
@@ -207,15 +205,13 @@ module Scrabble =
                         | Left -> List.init lenghtToCheck (fun x -> (fst moveOneCoord - x, snd moveOneCoord))
                         | Up -> List.init lenghtToCheck (fun x -> (fst moveOneCoord, snd moveOneCoord - x))
                         | Down -> List.init lenghtToCheck (fun x -> (fst moveOneCoord, snd moveOneCoord + x))
-                    
-                    //forcePrint (sprintf "mainCoordsToCheck: %A \n" mainCoordsToCheck)
+                    //Ie. if going right we are checking 1 up and 1 down from the main coords, to guarantee that we can freely place the word
                     let secondaryCoordsToCheck =
                         match direction with
                         | Right -> List.map (fun x -> (fst x, snd x + 1)) mainCoordsToCheck
                         | Left -> List.map (fun x -> (fst x, snd x - 1)) mainCoordsToCheck
                         | Up -> List.map (fun x -> (fst x - 1, snd x)) mainCoordsToCheck
                         | Down -> List.map (fun x -> (fst x + 1, snd x)) mainCoordsToCheck
-                    //forcePrint (sprintf "secondaryCoordsToCheck: %A \n" secondaryCoordsToCheck)
                     
                     let tertiaryCoordsToCheck =
                         match direction with
@@ -223,18 +219,14 @@ module Scrabble =
                         | Left -> List.map (fun x -> (fst x, snd x + 1)) mainCoordsToCheck
                         | Up -> List.map (fun x -> (fst x + 1, snd x)) mainCoordsToCheck
                         | Down -> List.map (fun x -> (fst x - 1, snd x)) mainCoordsToCheck
-                    
-                    //forcePrint (sprintf "tertiaryCoordsToCheck: %A \n" tertiaryCoordsToCheck)
-                    
-                    //Remove coord from list
+                                        
                     let allCoordsToCheck =  mainCoordsToCheck @ secondaryCoordsToCheck @ tertiaryCoordsToCheck @ [oneCoordBehindTarget]
 
                     let nextTileIsFree = List.forall (fun x -> Map.tryFind x st.tilesAlreadyPlayed = None) allCoordsToCheck
                     (nextTileIsFree,direction)
                     
          
-                //TODO omdøb til opening move.
-                let checkAndPlayOpeningMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) =
+                let PlayFirstTurnMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) =
                     let playLongestWord (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) (direction: Direction) : (coord * (uint32 * (char * int))) list =
                         let charList = List.ofArray (longestWord.ToCharArray())
                         let rec calculateMove (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
@@ -247,27 +239,8 @@ module Scrabble =
                                 calculateMove (newMove :: acc) t newCoord
                         calculateMove [] charList startCoord
                     
-                    let checkIfPossibleToTheRight = checkIfPlacementIsPossible2 longestWord.Length startCoord Right
-                    let checkIfPossibleToTheLeft = checkIfPlacementIsPossible2 longestWord.Length startCoord Down
-                    let checkIfPossibleToTheUp = checkIfPlacementIsPossible2 longestWord.Length startCoord Up
-                    let checkIfPossibleToTheDown = checkIfPlacementIsPossible2 longestWord.Length startCoord Down
-                    let allDirections = [checkIfPossibleToTheRight; checkIfPossibleToTheLeft; checkIfPossibleToTheUp; checkIfPossibleToTheDown]
-                    
-                    let rec checkAllDirectionsAndPlay (allDirections:(bool*Direction) list) =
-                        match allDirections with
-                        | [] ->
-                            forcePrint ("No possible move: Please write one yourself:\n")
-                            let input = System.Console.ReadLine()
-                            let move = RegEx.parseMove input
-                            send cstream (SMPlay move)
-                        | h :: t ->
-                            match h with
-                            | (true, direction) ->
-                                let move = playLongestWord longestWord (0,0) handWithFullInfo direction
-                                send cstream (SMPlay move)
-                            | _ ->
-                                checkAllDirectionsAndPlay t
-                    checkAllDirectionsAndPlay allDirections
+                    let move = playLongestWord longestWord startCoord handWithFullInfo Right
+                    send cstream (SMPlay move)
     
                 let playMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) (direction: Direction) : (coord * (uint32 * (char * int))) list =
                     let skipFirstCoord = match direction with
@@ -301,7 +274,6 @@ module Scrabble =
                         let reversedCharList = List.ofArray (reversedWord.ToCharArray())
                         loop lengthOfWord [] reversedCharList startCoord
                 
-                //Find some coordinate, where there is room to play.
                 let generateListOfPossibleStartCoords =
                     let listOfCoordsFromTilesPlayed = Map.toList st.tilesAlreadyPlayed |> List.map (fun (coord, _) -> coord)
                     let rec generateListOfPossibleStartCoords (lenghtToCheck: int) (coords: coord list) (acc: (coord * Direction) list)  =
@@ -342,48 +314,90 @@ module Scrabble =
                     forcePrint "Ready to do first move\n"
                     let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
                     forcePrint (sprintf "Longest word DontAdd: %A\n" longestWordDontAdd)
-                    checkAndPlayOpeningMove longestWordDontAdd (0,0) handWithFullInfo
+                    //0,0 er center square, men hvordan trækker jeg den automatisk?
+                    PlayFirstTurnMove longestWordDontAdd (0,0) handWithFullInfo
                 else
                     forcePrint "GIK IND I NORMAL MOVE\n"
                     let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
                     forcePrint (sprintf "listOfPossibleStartCoords: %A\n" listOfPossiblePlayCoords)
-                    let (coord, direction) = List.head listOfPossiblePlayCoords
-                    let shouldAddToFront = match direction with
-                                       | Right -> true
-                                       | Down -> true
-                                       | _ -> false
-                    let convertUint32ToChar2 (id:uint32) : char =
-                        let ab = handIdToTile.[id] |> List.ofSeq
-                        match ab with
-                        | h::t ->
-                            fst h
-                        | [x] -> fst x
-                        | _ ->
-                            forcePrint "BØR IKKE SKE"
-                            failwith "convertUint32ToChar2"
-    
-                    let charToBuildFrom = convertUint32ToChar2 st.tilesAlreadyPlayed.[coord]
-                    forcePrint (sprintf "Direction: %A Coord: %A CharAtCoord: %A\n" direction coord charToBuildFrom)
-                    let mutable currentLongestWord = ""
-                    if shouldAddToFront then
-                        let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
-                        //forcePrint (sprintf "Every permutation found in dict Front: %A\n" everyPermutationFoundInDictFront)
-                        let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
-                        currentLongestWord <- longestWordFront
-                        forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
-                    else
-                        //TODO MAKE IT PLAY UP AND LEFT - IT IS OUTCOMMENTED IN generateListOfPossibleStartCoords
-                        let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
-                        let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
-                        currentLongestWord <- longestWordBack
-                        forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
                     
-                    if currentLongestWord = "" then
+                    let rec checkEveryCoordFindLongestWord (listOfPossiblePlayCoords: (coord * Direction) list) (acc: (string*coord*Direction)) =
+                        match listOfPossiblePlayCoords with
+                        | [] ->
+                            forcePrint "Done checking every coord\n"
+                            acc
+                        | h :: t ->
+                            let (coord, direction) = h
+                            let shouldAddToFront =
+                                match direction with
+                                | Right -> true
+                                | Down -> true
+                                | _ -> false
+                            let convertTileIdToChar (id:uint32) : char =
+                                let ab = handIdToTile.[id] |> List.ofSeq
+                                match ab with
+                                | h::t ->
+                                    fst h
+                                | _ ->
+                                    failwith "convertUint32ToChar2"
+                            let charToBuildFrom = convertTileIdToChar st.tilesAlreadyPlayed.[coord]
+                            if shouldAddToFront then
+                                let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
+                                let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+                                match acc with
+                                | (currentLongest, _, _) ->
+                                    if longestWordFront.Length > currentLongest.Length then
+                                        forcePrint (sprintf "Old longest: %A - New longest: %A\n" currentLongest longestWordFront)
+                                        checkEveryCoordFindLongestWord t (longestWordFront, coord, direction)
+                                    else
+                                        checkEveryCoordFindLongestWord t acc                                
+                            else
+                                let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
+                                let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+                                match acc with
+                                | (currentLongest, _, _) ->
+                                    if longestWordBack.Length > currentLongest.Length then
+                                        forcePrint (sprintf "Old longest: %A - New longest: %A\n" currentLongest longestWordBack)
+                                        checkEveryCoordFindLongestWord t (longestWordBack, coord, direction)
+                                    else
+                                        checkEveryCoordFindLongestWord t acc
+                    let (bestWord, bestCoord, bestDirection) = checkEveryCoordFindLongestWord listOfPossiblePlayCoords ("", (0,0), Right)
+                    //forcePrint (sprintf "Longest word: %A\n" longestWord)
+                            
+                    //let listOfPossiblePlayCoords = checkEveryCoordFindLongestWord listOfPossiblePlayCoords ("", (0,0), Right)
+                                        
+                    //let (coord, direction) = List.head listOfPossiblePlayCoords
+                    //let shouldAddToFront = match direction with
+                    //                   | Right -> true
+                    //                   | Down -> true
+                    //                   | _ -> false
+                    //let convertTileIdToChar (id:uint32) : char =
+                    //    let ab = handIdToTile.[id] |> List.ofSeq
+                    //    match ab with
+                    //    | h::t ->
+                    //        fst h
+                    //    | _ ->
+                    //        failwith "convertUint32ToChar2"
+    //
+                    //let charToBuildFrom = convertTileIdToChar st.tilesAlreadyPlayed.[coord]
+                    //let mutable currentLongestWord = ""
+                    //if shouldAddToFront then
+                    //    let everyPermutationFoundInDictFront = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Front handWithFullInfo) st.dict
+                    //    let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+                    //    currentLongestWord <- longestWordFront
+                    //    forcePrint (sprintf "Longest word Front: %A\n" longestWordFront)
+                    //else
+                    //    let everyPermutationFoundInDictBack = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced charToBuildFrom Back handWithFullInfo) st.dict
+                    //    let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+                    //    currentLongestWord <- longestWordBack
+                    //    forcePrint (sprintf "Longest word Back: %A\n" longestWordBack)
+                    //
+                    if bestWord = "" then
                         let handAsList = MultiSet.toList st.hand
                         forcePrint (sprintf "Hand exchanging: %A\n" handAsList)
                         send cstream (SMChange handAsList)
                     else
-                        let move = playMove currentLongestWord coord handWithFullInfo direction
+                        let move = playMove bestWord bestCoord handWithFullInfo bestDirection
                         forcePrint (sprintf "MOVE SENDING TO SERVER: %A\n" move)
                         send cstream (SMPlay move)
                     
@@ -524,7 +538,8 @@ module Scrabble =
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
         // Converter to make Map<unit32,tile> into Map<uint32,(char*int)>
-        let getFirstElement tile = Set.toList tile |> (fun x -> x.Head)
-        let gameStartTiles = Map.map (fun id tileTuple -> getFirstElement tileTuple) tiles
+        //TODO HAR FJERNET HER
+        //let getFirstElement tile = Set.toList tile |> (fun x -> x.Head)
+        //let gameStartTiles = Map.map (fun id tileTuple -> getFirstElement tileTuple) tiles
 
         fun () -> playGame cstream tiles (State.mkState board dict playerNumber playerTurn List.empty handSet Map.empty)
