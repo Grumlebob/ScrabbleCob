@@ -67,7 +67,8 @@ let main argv =
     //---PLAYER SETTINGS --
     let players =
         [
-          ("Jacob", dictionary, GrumboBot.Scrabble.startGame)
+          ("JacoBot", dictionary, GrumboBot.Scrabble.startGame)
+          //("Jacob2", dictionary, GrumboBot.Scrabble.startGame)
           ("OxyphenButazone", dictionary, Oxyphenbutazone.Scrabble.startGame)
           //("ManualScrabble", dictionary, ManualRegex.Scrabble.startGame)
           //("Grumbo2", dictionary, GrumboBot.Scrabble.startGame)
