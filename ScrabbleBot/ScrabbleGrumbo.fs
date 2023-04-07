@@ -188,49 +188,50 @@ module Scrabble =
                                 getLongestWordFromResult acc t
                     getLongestWordFromResult "" resultOfLookupEveryStringInPermutationTest
                 
-                let checkIfPlacementIsPossible (lenghtToCheck:int) (coord:coord) (direction: Direction) :(bool*Direction)=
-                    //forcePrint (sprintf "Checking Coord: %A\n" coord)       
-                    let rec checkIfTileIsAlreadyPlayed (playAvailable:bool)(coord:coord) lenghtToCheck =
-                        if lenghtToCheck = 0 then
-                            (playAvailable, direction)
-                        else
-                            let horizontal = match direction with
-                                             | Right -> true
-                                             | Left -> true
-                                             | _ -> false
-                            let bothSidesFree = 
-                                match horizontal with
-                                | false ->
-                                    //TODO CHECK BILLEDE I SCRABBLETEMPLATE fejl.PNG - HER SÅ ER DEN IKKE RIGTIG FOR LEFT.
-                                    let sideAFree = Map.tryFind (fst coord, snd coord+1) st.tilesAlreadyPlayed
-                                    let sideBFree = Map.tryFind (fst coord, snd coord-1) st.tilesAlreadyPlayed
-                                    if sideAFree = None && sideBFree = None then
-                                        true
-                                    else
-                                        //forcePrint (sprintf "Horizontal: %A - Coord: %A - sideAFree: %A\n" horizontal coord sideAFree)
-                                        //forcePrint (sprintf "Horizontal: %A - Coord: %A - sideBFree: %A\n" horizontal coord sideBFree)
-                                        false
-                                | true ->
-                                    let sideAFree = Map.tryFind (fst coord+1, snd coord) st.tilesAlreadyPlayed
-                                    let sideBFree = Map.tryFind (fst coord-1, snd coord) st.tilesAlreadyPlayed
-                                    if sideAFree = None && sideBFree = None then
-                                        true
-                                    else
-                                        //forcePrint (sprintf "Horizontal: %A - Coord: %A - sideAFree: %A\n" horizontal coord sideAFree)
-                                        //forcePrint (sprintf "Horizontal: %A - Coord: %A - sideBFree: %A\n" horizontal coord sideBFree)
-                                        false
-                            if bothSidesFree then    
-                                match Map.tryFind coord st.tilesAlreadyPlayed with
-                                | Some _ ->
-                                    playAvailable = false |> ignore
-                                    (playAvailable, direction)
-                                | None ->
-                                    let newCoord = getNewCoord coord direction
-                                    checkIfTileIsAlreadyPlayed playAvailable newCoord (lenghtToCheck - 1)
-                            else
-                                //forcePrint (sprintf "Both sides are not free\n")
-                                (false, direction)
-                    checkIfTileIsAlreadyPlayed true coord lenghtToCheck
+
+                let checkIfPlacementIsPossible2 (lenghtToCheck:int) (coord:coord) (direction: Direction) :(bool*Direction)=
+                    //forcePrint (sprintf "Checking Coord: %A with Direction: %A \n" coord direction)                    
+                    let oneCoordBehindTarget =
+                        match direction with
+                        | Right -> (fst coord - 1, snd coord)
+                        | Left -> (fst coord + 1, snd coord)
+                        | Up -> (fst coord, snd coord + 1)
+                        | Down -> (fst coord, snd coord - 1)
+                    
+                    let moveOneCoord = getNewCoord coord direction
+                    //forcePrint (sprintf "oneCoordBehindTarget: %A \n" oneCoordBehindTarget)
+                    
+                    let mainCoordsToCheck = 
+                        match direction with
+                        | Right -> List.init lenghtToCheck (fun x -> (fst moveOneCoord + x, snd moveOneCoord))
+                        | Left -> List.init lenghtToCheck (fun x -> (fst moveOneCoord - x, snd moveOneCoord))
+                        | Up -> List.init lenghtToCheck (fun x -> (fst moveOneCoord, snd moveOneCoord - x))
+                        | Down -> List.init lenghtToCheck (fun x -> (fst moveOneCoord, snd moveOneCoord + x))
+                    
+                    //forcePrint (sprintf "mainCoordsToCheck: %A \n" mainCoordsToCheck)
+                    let secondaryCoordsToCheck =
+                        match direction with
+                        | Right -> List.map (fun x -> (fst x, snd x + 1)) mainCoordsToCheck
+                        | Left -> List.map (fun x -> (fst x, snd x - 1)) mainCoordsToCheck
+                        | Up -> List.map (fun x -> (fst x - 1, snd x)) mainCoordsToCheck
+                        | Down -> List.map (fun x -> (fst x + 1, snd x)) mainCoordsToCheck
+                    //forcePrint (sprintf "secondaryCoordsToCheck: %A \n" secondaryCoordsToCheck)
+                    
+                    let tertiaryCoordsToCheck =
+                        match direction with
+                        | Right -> List.map (fun x -> (fst x, snd x - 1)) mainCoordsToCheck
+                        | Left -> List.map (fun x -> (fst x, snd x + 1)) mainCoordsToCheck
+                        | Up -> List.map (fun x -> (fst x + 1, snd x)) mainCoordsToCheck
+                        | Down -> List.map (fun x -> (fst x - 1, snd x)) mainCoordsToCheck
+                    
+                    //forcePrint (sprintf "tertiaryCoordsToCheck: %A \n" tertiaryCoordsToCheck)
+                    
+                    //Remove coord from list
+                    let allCoordsToCheck =  mainCoordsToCheck @ secondaryCoordsToCheck @ tertiaryCoordsToCheck @ [oneCoordBehindTarget]
+
+                    let nextTileIsFree = List.forall (fun x -> Map.tryFind x st.tilesAlreadyPlayed = None) allCoordsToCheck
+                    (nextTileIsFree,direction)
+                    
          
                 //TODO omdøb til opening move.
                 let checkAndPlayOpeningMove (longestWord:string) (startCoord: coord) (handWithFullInfo:(char * uint32 * int) list) =
@@ -246,10 +247,10 @@ module Scrabble =
                                 calculateMove (newMove :: acc) t newCoord
                         calculateMove [] charList startCoord
                     
-                    let checkIfPossibleToTheRight = checkIfPlacementIsPossible longestWord.Length startCoord Right
-                    let checkIfPossibleToTheLeft = checkIfPlacementIsPossible longestWord.Length startCoord Down
-                    let checkIfPossibleToTheUp = checkIfPlacementIsPossible longestWord.Length startCoord Up
-                    let checkIfPossibleToTheDown = checkIfPlacementIsPossible longestWord.Length startCoord Down
+                    let checkIfPossibleToTheRight = checkIfPlacementIsPossible2 longestWord.Length startCoord Right
+                    let checkIfPossibleToTheLeft = checkIfPlacementIsPossible2 longestWord.Length startCoord Down
+                    let checkIfPossibleToTheUp = checkIfPlacementIsPossible2 longestWord.Length startCoord Up
+                    let checkIfPossibleToTheDown = checkIfPlacementIsPossible2 longestWord.Length startCoord Down
                     let allDirections = [checkIfPossibleToTheRight; checkIfPossibleToTheLeft; checkIfPossibleToTheUp; checkIfPossibleToTheDown]
                     
                     let rec checkAllDirectionsAndPlay (allDirections:(bool*Direction) list) =
@@ -284,9 +285,6 @@ module Scrabble =
                     let rec loop (loopcounter: int) (acc:(coord * (uint32 * (char * int))) list) (chars:char list) (currentCoord:coord) =
                         match chars with
                         | _ when loopcounter = lengthOfWord ->
-                            forcePrint (sprintf "Skipping first coord: %A\n" currentCoord)
-                            forcePrint (sprintf "Current word: %A\n" chars)
-                            forcePrint (sprintf "Word Passing through: %A\n" chars.Tail)
                             loop (loopcounter-1) acc chars.Tail (getNewCoord currentCoord direction)
                         | [] -> acc
                         | h :: t ->
@@ -310,13 +308,15 @@ module Scrabble =
                         match coords with
                         | [] -> acc
                         | coord :: t ->
-                            let checkCoordRight = checkIfPlacementIsPossible lenghtToCheck coord Right
-                            let checkCoordDown = checkIfPlacementIsPossible lenghtToCheck coord Down
+                            let checkCoordRight = checkIfPlacementIsPossible2 lenghtToCheck coord Right
+                            let checkCoordDown = checkIfPlacementIsPossible2 lenghtToCheck coord Down
                             //TODO To disable left/up just outcomment here
-                            let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
-                            let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
+                            let checkCoordLeft = checkIfPlacementIsPossible2 lenghtToCheck coord Left
+                            let checkCoordUp = checkIfPlacementIsPossible2 lenghtToCheck coord Up
                             let allDirections = [checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown]
                             //let allDirections = [checkCoordRight; checkCoordDown]
+                            //let allDirections = [checkCoordLeft; checkCoordUp]
+                            //let allDirections = [checkCoordRight]
                             let rec checkAllDirections (allDirections:(bool*Direction) list) (acc: (coord * Direction) list)  =
                                 match allDirections with
                                 | [] ->
