@@ -55,24 +55,25 @@ module State =
     type state =
         { board: Parser.board
           dict: Dict
+          numOfPlayers: uint32
           playerNumber: uint32
           hand: MultiSet.MultiSet<uint32>
           playerTurn: uint32
           // players contain both playerids and their forfeited status
-          playerStatus: List<(uint32 * bool)>
           tilesAlreadyPlayed: Map<coord, uint32> }
 
-    let mkState b d pn ptu playerAndStatus h tilesAlreadyPlayed =
+    let mkState b d numOfPlayers pn ptu h tilesAlreadyPlayed =
         { board = b
           dict = d
+          numOfPlayers = numOfPlayers
           playerNumber = pn
           playerTurn = ptu
-          playerStatus = playerAndStatus
           hand = h
           tilesAlreadyPlayed = tilesAlreadyPlayed }
 
     let board st = st.board
     let dict st = st.dict
+    let numOfPlayers st = st.numOfPlayers
     let playerNumber st = st.playerNumber
     let hand st = st.hand
     let playerTurn st = st.playerTurn
@@ -364,7 +365,6 @@ module Scrabble =
             match msg with
             | RCM (CMPlaySuccess (ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                
                 //SAVE MOVES MADE TO tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
@@ -397,6 +397,9 @@ module Scrabble =
                 aux st' false
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
+                //TODO Solve turn logic!
+                forcePrint (sprintf "SOLVE LOGIC: pid %A - number of players %A - Playerturn %A - PlayerNumber %A\n" pid st.numOfPlayers st.playerTurn st.playerNumber)
+                
                 //Add moves ms to tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
@@ -413,27 +416,7 @@ module Scrabble =
                 aux st' false
             | RCM (CMGameOver _) -> ()
             | RCM (CMForfeit player) ->
-                forcePrint "CMForfeit prints: \n"
-                let rec changePlayerStatus player =
-                    match st.playerStatus with
-                    | [] -> []
-                    | h :: t ->
-                        if fst h = player then
-                            (fst h, true) :: t
-                        else
-                            h :: changePlayerStatus player
-
-                //Print player status
-                let rec printPlayerStatus playerStatus =
-                    match playerStatus with
-                    | [] -> ()
-                    | h :: t ->
-                        forcePrint (sprintf "Player %d: %A\n" (fst h) (snd h))
-                        printPlayerStatus t
-
-                printPlayerStatus st.playerStatus
-
-                let st' = { st with playerStatus = changePlayerStatus player }
+                let st' = st
                 //(player % uint32 (st.playerStatus.Length) + 1u = st.playerNumber)
                 aux st' false
             
@@ -500,4 +483,4 @@ module Scrabble =
         //let getFirstElement tile = Set.toList tile |> (fun x -> x.Head)
         //let gameStartTiles = Map.map (fun id tileTuple -> getFirstElement tileTuple) tiles
 
-        fun () -> playGame cstream tiles (State.mkState board dict playerNumber playerTurn List.empty handSet Map.empty)
+        fun () -> playGame cstream tiles (State.mkState board dict numPlayers playerNumber playerTurn handSet Map.empty)
