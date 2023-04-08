@@ -46,8 +46,8 @@ let main argv =
     //---DICTIONARY Trie or GADDAG---
     let dictAPI =
         // Uncomment if you have implemented a dictionary. last element None if you have not implemented a GADDAG
-        //Some(Dictionary.empty, Dictionary.insert, Dictionary.step, None)
-        Some(Dictionary.empty, Dictionary.insert, Dictionary.step, Some Dictionary.reverse)
+        Some(Dictionary.empty, Dictionary.insert, Dictionary.step, None)
+        //Some(Dictionary.empty, Dictionary.insert, Dictionary.step, Some Dictionary.reverse)
 
     let (dictionary, time) =
         time (fun () -> ScrabbleUtil.Dictionary.mkDict words dictAPI)
@@ -70,10 +70,10 @@ let main argv =
           ("JacoBot", dictionary, GrumboBot.Scrabble.startGame)
           //("Jacob2", dictionary, GrumboBot.Scrabble.startGame)
           ("OxyphenButazone", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("ManualScrabble", dictionary, ManualRegex.Scrabble.startGame)
-          //("Grumbo2", dictionary, GrumboBot.Scrabble.startGame)
-          //("CarstenBot", dictionary, CarstenBot.Scrabble.startGame)
           //("OxyphenButazone2", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone3", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone4", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone5", dictionary, Oxyphenbutazone.Scrabble.startGame)
           ]
 
     //---START GAME SETTINGS-----

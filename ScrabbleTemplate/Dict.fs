@@ -1,4 +1,4 @@
-module Dictionary
+module DictionaryGaddag
 
     open System.Collections.Generic
     

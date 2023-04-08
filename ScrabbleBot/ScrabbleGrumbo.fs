@@ -393,13 +393,12 @@ module Scrabble =
                         hand = handAfterAddingAndRemoving
                         tilesAlreadyPlayed = tilesAlreadyPlayed }
                 
-                //False, because next turn is opponent
-                aux st' false
+                if st.numOfPlayers > 1u then
+                    aux st' false
+                else
+                    aux st' true
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                //TODO Solve turn logic!
-                forcePrint (sprintf "SOLVE LOGIC: pid %A - number of players %A - Playerturn %A - PlayerNumber %A\n" pid st.numOfPlayers st.playerTurn st.playerNumber)
-                
                 //Add moves ms to tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
@@ -408,30 +407,45 @@ module Scrabble =
 
                 let newTiles = addMovesToTilesAlreadyPlayed ms
                 let st' = { st with tilesAlreadyPlayed = newTiles }
-                //TODO LAV MODULUS MAGIC HER, SÅ DET ALTID DEN RIGTIGE PLAYER TUR HER.
-                aux st' true
+                if st.numOfPlayers > 1u then
+                    let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    forcePrint (sprintf "PLAYER OVER 1 Should play next turn: %A\n" shouldPlayNextTurn)
+                    aux st' shouldPlayNextTurn
+                else
+                    let shouldPlayNextTurn = true
+                    forcePrint (sprintf "PLAYER 1 Should play next turn: %A\n" shouldPlayNextTurn)
+                    aux st' shouldPlayNextTurn     
             | RCM (CMPlayFailed (pid, ms)) ->
                 (* Failed play. Update your state *)
-                let st' = st // This state needs to be updated
-                aux st' false
+                let st' = st
+                if st.numOfPlayers > 1u then
+                    let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    aux st' shouldPlayNextTurn
+                else
+                    let shouldPlayNextTurn = true
+                    aux st' shouldPlayNextTurn   
             | RCM (CMGameOver _) -> ()
             | RCM (CMForfeit player) ->
                 let st' = st
-                //(player % uint32 (st.playerStatus.Length) + 1u = st.playerNumber)
-                aux st' false
-            
+                if st.numOfPlayers > 1u then
+                    let shouldPlayNextTurn = (player % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    aux st' shouldPlayNextTurn
+                else
+                    let shouldPlayNextTurn = true
+                    aux st' shouldPlayNextTurn  
             | RCM (CMChange (pid, numberOfTiles)) ->
-                forcePrint "CMChange prints: \n"
-                let st' = st // This state needs to be updated
-                aux st' false
+                let st' = st
+                if st.numOfPlayers > 1u then
+                    let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    aux st' shouldPlayNextTurn
+                else
+                    let shouldPlayNextTurn = true
+                    aux st' shouldPlayNextTurn   
             | RCM (CMChangeSuccess (newTiles)) ->
-                forcePrint "CMChangeSuccess prints: \n"
-                forcePrint (sprintf "NewTiles To Have: %A\n" newTiles)
                 let rec addNewGainedTiles (newPieces: (uint32 * uint32) list) (hand: MultiSet.MultiSet<uint32>) =
                     match newPieces with
                     | [] -> hand
                     | h :: t -> addNewGainedTiles t (MultiSet.addSingle (fst h) hand)
-                //Remove all pieces from hand and change to new ones.
                 let newHand = MultiSet.empty
                 let newHand = addNewGainedTiles newTiles newHand
                 let st' = { st with hand = newHand }
@@ -472,15 +486,10 @@ module Scrabble =
                 timeout
         )
 
-        let dict = dictf true // Uncomment if using a gaddag for your dictionary
-        //let dict = dictf false // Uncomment if using a trie for your dictionary
+        //let dict = dictf true // Uncomment if using a gaddag for your dictionary
+        let dict = dictf false // Uncomment if using a trie for your dictionary
         let board = Parser.parseBoardProg boardP
 
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
-
-        // Converter to make Map<unit32,tile> into Map<uint32,(char*int)>
-        //TODO HAR FJERNET HER
-        //let getFirstElement tile = Set.toList tile |> (fun x -> x.Head)
-        //let gameStartTiles = Map.map (fun id tileTuple -> getFirstElement tileTuple) tiles
 
         fun () -> playGame cstream tiles (State.mkState board dict numPlayers playerNumber playerTurn handSet Map.empty)

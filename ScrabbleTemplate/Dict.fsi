@@ -1,4 +1,4 @@
-module Dictionary
+module DictionaryGaddag
     type Dict
     val empty : unit -> Dict
     val insert : string -> Dict -> Dict
