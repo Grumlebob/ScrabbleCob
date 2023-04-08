@@ -86,8 +86,8 @@ module Scrabble =
             
             if myTurn then
                 //Thread.Sleep(2000)
-                forcePrint "HAND PRINT:\n"
-                Print.printHand handIdToTile (State.hand st)
+                //forcePrint "HAND PRINT:\n"
+                //Print.printHand handIdToTile (State.hand st)
                 
                 let getNewCoord (coord:coord) (direction:Direction) : coord =
                     match direction with
@@ -306,7 +306,7 @@ module Scrabble =
                 let handWithFullInfo = convertHandToListWithFullInfo handIdToTile st.hand
                 
                 if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
-                    forcePrint "Doing opening move\n"
+                    //forcePrint "Doing opening move\n"
                     let everyPermutationFoundInDictDontAdd = lookupWordsInDict (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' DontAdd handWithFullInfo) st.dict
                     let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
                     //0,0 er center square, men hvordan trækker jeg den automatisk?
@@ -318,7 +318,6 @@ module Scrabble =
                     let rec checkEveryCoordFindLongestWord (listOfPossiblePlayCoords: (coord * Direction) list) (acc: (string*coord*Direction)) =
                         match listOfPossiblePlayCoords with
                         | [] ->
-                            forcePrint "Done checking every coord\n"
                             acc
                         | h :: t ->
                             let (coord, direction) = h
@@ -354,7 +353,7 @@ module Scrabble =
                     let (bestWord, bestCoord, bestDirection) = checkEveryCoordFindLongestWord listOfPossiblePlayCoords ("", (0,0), Right)
                     if bestWord = "" then
                         let handAsList = MultiSet.toList st.hand
-                        forcePrint (sprintf "Hand exchanging: %A\n" handAsList)
+                        //forcePrint (sprintf "Hand exchanging: %A\n" handAsList)
                         send cstream (SMChange handAsList)
                     else
                         let move = playMove bestWord bestCoord handWithFullInfo bestDirection
@@ -409,11 +408,9 @@ module Scrabble =
                 let st' = { st with tilesAlreadyPlayed = newTiles }
                 if st.numOfPlayers > 1u then
                     let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
-                    forcePrint (sprintf "PLAYER OVER 1 Should play next turn: %A\n" shouldPlayNextTurn)
                     aux st' shouldPlayNextTurn
                 else
                     let shouldPlayNextTurn = true
-                    forcePrint (sprintf "PLAYER 1 Should play next turn: %A\n" shouldPlayNextTurn)
                     aux st' shouldPlayNextTurn     
             | RCM (CMPlayFailed (pid, ms)) ->
                 (* Failed play. Update your state *)
