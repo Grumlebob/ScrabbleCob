@@ -68,10 +68,10 @@ let main argv =
     let players =
         [
           ("JacoBot", dictionary, GrumboBot.Scrabble.startGame)
-          //("Jacob2", dictionary, GrumboBot.Scrabble.startGame)
-          ("OxyphenButazone", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          ("OxyphenButazone2", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          ("OxyphenButazone3", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          ("Jacob2", dictionary, GrumboBot.Scrabble.startGame)
+          //("OxyphenButazone", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone2", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone3", dictionary, Oxyphenbutazone.Scrabble.startGame)
           //("OxyphenButazone4", dictionary, Oxyphenbutazone.Scrabble.startGame)
           //("OxyphenButazone6", dictionary, Oxyphenbutazone.Scrabble.startGame)
           //("OxyphenButazone7", dictionary, Oxyphenbutazone.Scrabble.startGame)

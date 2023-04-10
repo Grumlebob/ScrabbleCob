@@ -88,7 +88,8 @@ module Scrabble =
                 //Thread.Sleep(2000)
                 //forcePrint "HAND PRINT:\n"
                 //Print.printHand handIdToTile (State.hand st)
-                
+                //forcePrint (sprintf "PLAYER TURN: %A\n" st.playerTurn)
+                                
                 let getNewCoord (coord:coord) (direction:Direction) : coord =
                     match direction with
                     | Right -> (fst coord+1, snd coord)
