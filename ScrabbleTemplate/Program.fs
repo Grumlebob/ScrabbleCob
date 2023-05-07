@@ -24,14 +24,12 @@ let main argv =
     System.Console.ForegroundColor <- System.ConsoleColor.Black
     System.Console.Clear()
 
-//    let board        = ScrabbleUtil.StandardBoard.standardBoard ()
     let board      = ScrabbleUtil.InfiniteBoard.infiniteBoard ()
-
+//    let board        = ScrabbleUtil.StandardBoard.standardBoard ()
 //    let board      = ScrabbleUtil.RandomBoard.randomBoard ()
 //    let board      = ScrabbleUtil.RandomBoard.randomBoardSeed (Some 42)
 //    let board      = ScrabbleUtil.InfiniteRandomBoard.infiniteRandomBoard ()
 //    let board      = ScrabbleUtil.InfiniteRandomBoard.infiniteRandomBoardSeed (Some 42)
-
 //    let board      = ScrabbleUtil.HoleBoard.holeBoard ()
 //    let board      = ScrabbleUtil.InfiniteHoleBoard.infiniteHoleBoard ()
 
@@ -44,32 +42,18 @@ let main argv =
     let port       = 13001
 
     let dictAPI =
-        // Uncomment if you have implemented a dictionary. last element None if you have not implemented a GADDAG
          Some (Dictionary.empty, Dictionary.insert, Dictionary.step, Some Dictionary.reverse) 
-        //None
         
-    // Uncomment this line to call your client
-    // let players    = [("Your name here", YourClientName.Scrabble.startGame)]
     let (dictionary, time) =
         time (fun () -> ScrabbleUtil.Dictionary.mkDict words dictAPI)
 
-    //let players = spawnMultiples "OxyphenButazone" dictionary Oxyphenbutazone.Scrabble.startGame 2
     //---PLAYER SETTINGS --
     let players =
         [
-          ("JacoBot", dictionary, GrumboBot.Scrabble.startGame)
-          //("Jacob2", dictionary, GrumboBot.Scrabble.startGame)
-          ("OxyphenButazone", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("Thomas", dictionary, ThomasBot.Scrabble.startGame)
-          //("Manual", dictionary, ScrabbleGPT.Scrabble.startGame)
+          ("JacoBot", dictionary, ScrabbleGrum.Scrabble.startGame)
+          ("OxyphenButazone1", dictionary, Oxyphenbutazone.Scrabble.startGame)
+          //("OxyphenButazone2", dictionary, Oxyphenbutazone.Scrabble.startGame)
           //("OxyphenButazone3", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone4", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone6", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone7", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone8", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone9", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone10", dictionary, Oxyphenbutazone.Scrabble.startGame)
-          //("OxyphenButazone11", dictionary, Oxyphenbutazone.Scrabble.startGame)
           ]
 
 
