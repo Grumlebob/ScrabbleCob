@@ -1,14 +1,14 @@
 # ScrabbleProject
 
-### Multi-player and dictionary
+### Multiplayer and dictionary
 
 Yes. The bot can play versus multiplies of itself, or the included bot OxyphenButazone. For playing the bot uses a GADDAG dictionary.
 
-### playing on all boards
+### Playing on all boards
 
 No. The bot is only setup to play on the infinite board and has not been tested on any other boards.
 
-### parallelism (yes/no)
+### Parallelism (yes/no)
 
 No. We have no used parallelism.
 
