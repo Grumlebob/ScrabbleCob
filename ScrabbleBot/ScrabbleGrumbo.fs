@@ -1,5 +1,6 @@
 ﻿namespace ScrabbleGrum
 
+open System
 open ScrabbleUtil
 open ScrabbleUtil.Dictionary
 open ScrabbleUtil.ServerCommunication
@@ -30,7 +31,8 @@ module RegEx =
             None
 
     let parseMove ts =
-        let pattern = @"([-]?[0-9]+[ ])([-]?[0-9]+[ ])([0-9]+)([A-Z]{1})([0-9]+)[ ]?"
+        let pattern =
+            @"([-]?[0-9]+[ ])([-]?[0-9]+[ ])([0-9]+)([A-Z]{1})([0-9]+)[ ]?"
 
         Regex.Matches(ts, pattern)
         |> Seq.cast<Match>
@@ -58,7 +60,8 @@ module State =
           hand: MultiSet.MultiSet<uint32>
           playerTurn: uint32
           // players contain both playerids and their forfeited status
-          tilesAlreadyPlayed: Map<coord, uint32> }
+          tilesAlreadyPlayed: Map<coord, uint32>
+          canExchangePieces: bool }
 
     let mkState b d numOfPlayers pn ptu h tilesAlreadyPlayed =
         { board = b
@@ -67,7 +70,8 @@ module State =
           playerNumber = pn
           playerTurn = ptu
           hand = h
-          tilesAlreadyPlayed = tilesAlreadyPlayed }
+          tilesAlreadyPlayed = tilesAlreadyPlayed
+          canExchangePieces = true }
 
     let board st = st.board
     let dict st = st.dict
@@ -103,7 +107,9 @@ module Scrabble =
                                 acc
                             else
                                 //Get all pieces of this id
-                                let (pieces: Set<char * int>) = (Map.find id handIdToTile)
+                                let (pieces: Set<char * int>) =
+                                    (Map.find id handIdToTile)
+
                                 Set.fold
                                     (fun setacc (char, pV) ->
                                         let rec loop acc char amountOfTilesOfThisId =
@@ -111,6 +117,7 @@ module Scrabble =
                                                 acc
                                             else
                                                 loop ((char, id, pV) :: acc) char (amountOfTilesOfThisId - 1)
+
                                         loop setacc char (int amountOfTilesOfThisId))
                                     []
                                     pieces
@@ -125,16 +132,20 @@ module Scrabble =
                     : string list =
                     //Place charToPlace at the beginning of every string
                     let addCharToListFront (charToAdd: char) (listOfString: string list) =
-                        listOfString |> List.map (fun str -> (string charToAdd) + str)
+                        listOfString
+                        |> List.map (fun str -> (string charToAdd) + str)
 
                     let addCharToListBack (charToAdd: char) (listOfString: string list) =
-                        listOfString |> List.map (fun str -> str + (string charToAdd))
+                        listOfString
+                        |> List.map (fun str -> str + (string charToAdd))
 
                     //Thanks to https://stackoverflow.com/questions/1526046/f-permutations
                     let rec distribute e =
                         function
                         | [] -> [ [ e ] ]
-                        | x :: xs' as xs -> (e :: xs) :: [ for xs in distribute e xs' -> x :: xs ]
+                        | x :: xs' as xs ->
+                            (e :: xs)
+                            :: [ for xs in distribute e xs' -> x :: xs ]
 
                     //https://stackoverflow.com/questions/1222185/most-elegant-combinations-of-elements-in-f
                     let rec permute =
@@ -161,10 +172,13 @@ module Scrabble =
                         List.map (fun x -> comb x charList) (List.init (List.length charList) (fun x -> x + 1))
                         |> List.concat
                     //Call permute on all combinations
-                    let allPermutations = List.map (fun x -> permute x) allCombinations |> List.concat
-                    
+                    let allPermutations =
+                        List.map (fun x -> permute x) allCombinations
+                        |> List.concat
+
                     //Convert all permutations to strings
-                    let allStrings = List.map (fun x -> convertListOfCharsToString x) allPermutations
+                    let allStrings =
+                        List.map (fun x -> convertListOfCharsToString x) allPermutations
                     //Place charToPlace at the beginning of every string
                     let finalStrings =
                         match whereToPlace with
@@ -182,7 +196,8 @@ module Scrabble =
                             let result = lookup h dict
 
                             if result = true then
-                                h :: acc @ lookupEveryStringInPermutationTest acc t dict
+                                h :: acc
+                                @ lookupEveryStringInPermutationTest acc t dict
                             else
                                 lookupEveryStringInPermutationTest acc t dict
 
@@ -217,7 +232,8 @@ module Scrabble =
                         | Up -> (fst coord, snd coord + 1)
                         | Down -> (fst coord, snd coord - 1)
 
-                    let moveOneCoord = getNewCoord coord direction
+                    let moveOneCoord =
+                        getNewCoord coord direction
 
                     let mainCoordsToCheck =
                         match direction with
@@ -243,8 +259,7 @@ module Scrabble =
                     let allCoordsToCheck =
                         mainCoordsToCheck
                         @ secondaryCoordsToCheck
-                        @ tertiaryCoordsToCheck
-                        @ [ oneCoordBehindTarget ]
+                          @ tertiaryCoordsToCheck @ [ oneCoordBehindTarget ]
 
                     let nextTileIsFree =
                         List.forall (fun x -> Map.tryFind x st.tilesAlreadyPlayed = None) allCoordsToCheck
@@ -262,7 +277,8 @@ module Scrabble =
                         (handWithFullInfo: (char * uint32 * int) list)
                         (direction: Direction)
                         : (coord * (uint32 * (char * int))) list =
-                        let charList = List.ofArray (longestWord.ToCharArray())
+                        let charList =
+                            List.ofArray (longestWord.ToCharArray())
 
                         let rec calculateMove
                             (acc: (coord * (uint32 * (char * int))) list)
@@ -272,14 +288,21 @@ module Scrabble =
                             match chars with
                             | [] -> acc
                             | h :: t ->
-                                let char, id, pV = List.find (fun (c, _, _) -> c = h) handWithFullInfo
+                                let char, id, pV =
+                                    List.find (fun (c, _, _) -> c = h) handWithFullInfo
+
                                 let newMove = currentCoord, (id, (char, pV))
-                                let newCoord = getNewCoord currentCoord direction
+
+                                let newCoord =
+                                    getNewCoord currentCoord direction
+
                                 calculateMove (newMove :: acc) t newCoord
 
                         calculateMove [] charList startCoord
 
-                    let move = playLongestWord longestWord startCoord handWithFullInfo Right
+                    let move =
+                        playLongestWord longestWord startCoord handWithFullInfo Right
+
                     send cstream (SMPlay move)
 
                 let playMove
@@ -316,22 +339,33 @@ module Scrabble =
                             loop (loopcounter - 1) acc chars.Tail (getNewCoord currentCoord direction)
                         | [] -> acc
                         | h :: t ->
-                            let char, id, pV = List.find (fun (c, _, _) -> c = h) handWithFullInfo
+                            let char, id, pV =
+                                List.find (fun (c, _, _) -> c = h) handWithFullInfo
+
                             let newMove = currentCoord, (id, (char, pV))
-                            let newCoord = getNewCoord currentCoord direction
+
+                            let newCoord =
+                                getNewCoord currentCoord direction
+
                             loop (loopcounter - 1) (newMove :: acc) t newCoord
 
                     if skipFirstCoord then
-                        let charList = List.ofArray (longestWord.ToCharArray())
+                        let charList =
+                            List.ofArray (longestWord.ToCharArray())
+
                         loop lengthOfWord [] charList startCoord
                     else
                         let reversedWord = reverseString longestWord
-                        let reversedCharList = List.ofArray (reversedWord.ToCharArray())
+
+                        let reversedCharList =
+                            List.ofArray (reversedWord.ToCharArray())
+
                         loop lengthOfWord [] reversedCharList startCoord
 
                 let generateListOfPossibleStartCoords =
                     let listOfCoordsFromTilesPlayed =
-                        Map.toList st.tilesAlreadyPlayed |> List.map (fun (coord, _) -> coord)
+                        Map.toList st.tilesAlreadyPlayed
+                        |> List.map (fun (coord, _) -> coord)
 
                     let rec generateListOfPossibleStartCoords
                         (lenghtToCheck: int)
@@ -341,13 +375,23 @@ module Scrabble =
                         match coords with
                         | [] -> acc
                         | coord :: t ->
-                            let checkCoordRight = checkIfPlacementIsPossible lenghtToCheck coord Right
-                            let checkCoordDown = checkIfPlacementIsPossible lenghtToCheck coord Down
-                            let checkCoordLeft = checkIfPlacementIsPossible lenghtToCheck coord Left
-                            let checkCoordUp = checkIfPlacementIsPossible lenghtToCheck coord Up
+                            let checkCoordRight =
+                                checkIfPlacementIsPossible lenghtToCheck coord Right
+
+                            let checkCoordDown =
+                                checkIfPlacementIsPossible lenghtToCheck coord Down
+
+                            let checkCoordLeft =
+                                checkIfPlacementIsPossible lenghtToCheck coord Left
+
+                            let checkCoordUp =
+                                checkIfPlacementIsPossible lenghtToCheck coord Up
 
                             let allDirections =
-                                [ checkCoordRight; checkCoordLeft; checkCoordUp; checkCoordDown ]
+                                [ checkCoordRight
+                                  checkCoordLeft
+                                  checkCoordUp
+                                  checkCoordDown ]
 
                             let rec checkAllDirections
                                 (allDirections: (bool * Direction) list)
@@ -360,26 +404,33 @@ module Scrabble =
                                     | true, direction -> checkAllDirections t ((coord, direction) :: acc)
                                     | _ -> checkAllDirections t acc
 
-                            let directionsList = checkAllDirections allDirections acc
+                            let directionsList =
+                                checkAllDirections allDirections acc
+
                             generateListOfPossibleStartCoords lenghtToCheck t directionsList
                     //Notice a hardcoded length of 7
                     generateListOfPossibleStartCoords 7 listOfCoordsFromTilesPlayed []
 
-                
-                let handWithFullInfo = convertHandToListWithFullInfo handIdToTile st.hand
-    
+
+                let handWithFullInfo =
+                    convertHandToListWithFullInfo handIdToTile st.hand
+
                 //Doing first move
-                if st.playerTurn = 1u && st.tilesAlreadyPlayed.Count = 0 then
+                if st.playerTurn = 1u
+                   && st.tilesAlreadyPlayed.Count = 0 then
                     let everyPermutationFoundInDictDontAdd =
                         lookupWordsInDict
                             (convertListOfCharsToEveryPermutationWithFixedCharPlaced 'A' DontAdd handWithFullInfo)
                             st.dict
 
-                    let longestWordDontAdd = getLongestWordFromResult everyPermutationFoundInDictDontAdd
+                    let longestWordDontAdd =
+                        getLongestWordFromResult everyPermutationFoundInDictDontAdd
+
                     PlayFirstTurnMove longestWordDontAdd (0, 0) handWithFullInfo
                 else
                     //Doing anything but first move.
-                    let listOfPossiblePlayCoords = generateListOfPossibleStartCoords
+                    let listOfPossiblePlayCoords =
+                        generateListOfPossibleStartCoords
 
                     let rec checkEveryCoordFindLongestWord
                         (listOfPossiblePlayCoords: (coord * Direction) list)
@@ -398,11 +449,13 @@ module Scrabble =
 
                             let convertTileIdToChar (id: uint32) : char =
                                 let ab = handIdToTile.[id] |> List.ofSeq
+
                                 match ab with
                                 | h :: _ -> fst h
                                 | _ -> failwith "Should never happen"
 
-                            let charToBuildFrom = convertTileIdToChar st.tilesAlreadyPlayed.[coord]
+                            let charToBuildFrom =
+                                convertTileIdToChar st.tilesAlreadyPlayed.[coord]
 
                             if shouldAddToFront then
                                 let everyPermutationFoundInDictFront =
@@ -413,7 +466,8 @@ module Scrabble =
                                             handWithFullInfo)
                                         st.dict
 
-                                let longestWordFront = getLongestWordFromResult everyPermutationFoundInDictFront
+                                let longestWordFront =
+                                    getLongestWordFromResult everyPermutationFoundInDictFront
 
                                 match acc with
                                 | currentLongest, _, _ ->
@@ -430,7 +484,8 @@ module Scrabble =
                                             handWithFullInfo)
                                         st.dict
 
-                                let longestWordBack = getLongestWordFromResult everyPermutationFoundInDictBack
+                                let longestWordBack =
+                                    getLongestWordFromResult everyPermutationFoundInDictBack
 
                                 match acc with
                                 | currentLongest, _, _ ->
@@ -441,29 +496,39 @@ module Scrabble =
 
                     let bestWord, bestCoord, bestDirection =
                         checkEveryCoordFindLongestWord listOfPossiblePlayCoords ("", (0, 0), Right)
-                    
+
                     //If we haven't found a word, then exchange pieces.
                     if bestWord = "" then
                         let handAsList = MultiSet.toList st.hand
-                        send cstream (SMChange handAsList)
+
+                        if st.canExchangePieces then
+                            send cstream (SMChange handAsList)
+                        else
+                            send cstream (SMPass)
+                    //send cstream (SMPass)
                     else
-                        let move = playMove bestWord bestCoord handWithFullInfo bestDirection
+                        let move =
+                            playMove bestWord bestCoord handWithFullInfo bestDirection
+
                         send cstream (SMPlay move)
 
             let msg = recv cstream
 
             match msg with
-            | RCM(CMPlaySuccess(ms, points, newPieces)) ->
+            | RCM (CMPlaySuccess (ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                
+
                 //SAVE MOVES MADE TO tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
                     | [] -> st.tilesAlreadyPlayed
-                    | h :: t -> addMovesToTilesAlreadyPlayed t |> Map.add (fst h) (snd h |> fst)
+                    | h :: t ->
+                        addMovesToTilesAlreadyPlayed t
+                        |> Map.add (fst h) (snd h |> fst)
 
-                let tilesAlreadyPlayed = addMovesToTilesAlreadyPlayed ms
-                
+                let tilesAlreadyPlayed =
+                    addMovesToTilesAlreadyPlayed ms
+
                 //REMOVE AND ADD NEW TILES TO HAND
                 let rec removeUsedTiles (ms: uint32 list) (hand: MultiSet.MultiSet<uint32>) =
                     match ms with
@@ -476,82 +541,122 @@ module Scrabble =
                     | h :: t -> addNewGainedTiles t (MultiSet.addSingle (fst h) hand)
 
                 let handAfterRemoval =
-                    removeUsedTiles (List.map (fun x -> snd x) ms |> List.map (fun x -> fst x)) (State.hand st)
+                    removeUsedTiles
+                        (List.map (fun x -> snd x) ms
+                         |> List.map (fun x -> fst x))
+                        (State.hand st)
 
-                let handAfterAddingAndRemoving = addNewGainedTiles newPieces handAfterRemoval
+                let handAfterAddingAndRemoving =
+                    addNewGainedTiles newPieces handAfterRemoval
 
                 let st' =
                     { st with
                         hand = handAfterAddingAndRemoving
                         tilesAlreadyPlayed = tilesAlreadyPlayed }
 
-                if st.numOfPlayers > 1u then aux st' false else aux st' true
-            | RCM(CMPlayed(pid, ms, points)) ->
+                if st.numOfPlayers > 1u then
+                    aux st' false
+                else
+                    aux st' true
+            | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                
+
                 //Add moves ms to tilesAlreadyPlayed
                 let rec addMovesToTilesAlreadyPlayed ms =
                     match ms with
                     | [] -> st.tilesAlreadyPlayed
-                    | h :: t -> addMovesToTilesAlreadyPlayed t |> Map.add (fst h) (snd h |> fst)
+                    | h :: t ->
+                        addMovesToTilesAlreadyPlayed t
+                        |> Map.add (fst h) (snd h |> fst)
 
-                let newTiles = addMovesToTilesAlreadyPlayed ms
+                let newTiles =
+                    addMovesToTilesAlreadyPlayed ms
 
                 let st' =
-                    { st with
-                        tilesAlreadyPlayed = newTiles }
+                    { st with tilesAlreadyPlayed = newTiles }
 
                 if st.numOfPlayers > 1u then
-                    let shouldPlayNextTurn = (pid % st.numOfPlayers) + 1u = st.playerNumber
+                    let shouldPlayNextTurn =
+                        (pid % st.numOfPlayers) + 1u = st.playerNumber
+
                     aux st' shouldPlayNextTurn
                 else
                     let shouldPlayNextTurn = true
                     aux st' shouldPlayNextTurn
-            | RCM(CMPlayFailed(pid, ms)) ->
+            | RCM (CMPlayFailed (pid, ms)) ->
                 (* Failed play. Update your state *)
                 let st' = st
 
                 if st.numOfPlayers > 1u then
-                    let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    let shouldPlayNextTurn =
+                        (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+
                     aux st' shouldPlayNextTurn
                 else
                     let shouldPlayNextTurn = true
                     aux st' shouldPlayNextTurn
-            | RCM(CMGameOver _) -> ()
-            | RCM(CMForfeit player) ->
+            | RCM (CMGameOver _) -> ()
+            | RCM (CMForfeit player) ->
                 let st' = st
 
                 if st.numOfPlayers > 1u then
-                    let shouldPlayNextTurn = (player % uint32 st.numOfPlayers) + 1u = st.playerNumber
+                    let shouldPlayNextTurn =
+                        (player % uint32 st.numOfPlayers) + 1u = st.playerNumber
+
                     aux st' shouldPlayNextTurn
                 else
                     let shouldPlayNextTurn = true
                     aux st' shouldPlayNextTurn
-            | RCM(CMChange(pid, numberOfTiles)) ->
-                let st' = st
+            | RCM (CMChange (pid, numberOfTiles)) ->
 
                 if st.numOfPlayers > 1u then
-                    let shouldPlayNextTurn = (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
-                    aux st' shouldPlayNextTurn
+                    let shouldPlayNextTurn =
+                        (pid % uint32 st.numOfPlayers) + 1u = st.playerNumber
+
+                    aux st shouldPlayNextTurn
                 else
                     let shouldPlayNextTurn = true
-                    aux st' shouldPlayNextTurn
-            | RCM(CMChangeSuccess(newTiles)) ->
+                    aux st shouldPlayNextTurn
+            | RCM (CMChangeSuccess (newTiles)) ->
                 let rec addNewGainedTiles (newPieces: (uint32 * uint32) list) (hand: MultiSet.MultiSet<uint32>) =
                     match newPieces with
                     | [] -> hand
                     | h :: t -> addNewGainedTiles t (MultiSet.addSingle (fst h) hand)
 
                 let newHand = MultiSet.empty
-                let newHand = addNewGainedTiles newTiles newHand
-                let st' = { st with hand = newHand }
-                aux st' false
-            | RCM a -> failwith (sprintf "not implmented: %A" a)
-            | RGPE err ->
-                forcePrint "Gameplay Error" 
-                aux st false
 
-        if st.playerTurn = 1u && st.playerNumber = 1u && st.tilesAlreadyPlayed.Count = 0 then
+                let newHand =
+                    addNewGainedTiles newTiles newHand
+
+                let ownTurn = st.numOfPlayers = 1u
+
+                let st' = { st with hand = newHand }
+
+                aux st' ownTurn
+            | RCM (CMPassed (pid)) ->
+                if st.numOfPlayers > 1u then
+                    let shouldPlayNextTurn =
+                        (pid % st.numOfPlayers) + 1u = st.playerNumber
+
+                    aux st shouldPlayNextTurn
+                else
+                    let shouldPlayNextTurn = true
+                    aux st shouldPlayNextTurn
+            | RCM a -> failwith (sprintf "not implmented: %A" a)
+
+            | RGPE err ->
+                forcePrint (List.head err |> string)
+
+                match err.Head with
+                | GPENotEnoughPieces (requestedPieces, piecesLeft) ->
+                    aux { st with canExchangePieces = false } (st.numOfPlayers = 1u)
+                | x -> aux st (st.numOfPlayers = 1u)
+
+
+
+        if st.playerTurn = 1u
+           && st.playerNumber = 1u
+           && st.tilesAlreadyPlayed.Count = 0 then
             aux st true
         else
             aux st false
@@ -586,6 +691,7 @@ module Scrabble =
         //let dict = dictf false // Uncomment if using a trie for your dictionary
         let board = Parser.mkBoard boardP
 
-        let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
+        let handSet =
+            List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
         fun () -> playGame cstream tiles (State.mkState board dict numPlayers playerNumber playerTurn handSet Map.empty)
