@@ -140,3 +140,10 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/fsharp,visualstudiocode,rider,windows
+
+# Local IDE state, build output and macOS metadata
+.vs/
+.idea/
+bin/
+obj/
+.DS_Store

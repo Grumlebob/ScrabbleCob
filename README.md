@@ -25,3 +25,7 @@ cd into ScrabbleTemplate folder
 run the program
 
     dotnet run
+
+## History
+
+The branch `archive/prototype-2023-04` (tag `prototype-2023-04-10`) holds the earlier exploration, which used a trie and a GADDAG module, that this hand-in grew out of.
