@@ -1,8 +1,8 @@
-# ScrabbleProject
+# ScrabbleCob
 
 ### Multiplayer and dictionary
 
-Yes. The bot can play versus multiplies of itself, or the included bot OxyphenButazone. For playing the bot uses a GADDAG dictionary.
+Yes. The bot can play versus copies of itself, or the included bot OxyphenButazone. For playing the bot uses a GADDAG dictionary.
 
 ### Playing on all boards
 
@@ -10,17 +10,19 @@ No. The bot is only setup to play on the infinite board and has not been tested 
 
 ### Parallelism (yes/no)
 
-No. We have no used parallelism.
+No. We have not used parallelism.
 
 ### Respect the timeout flag (yes/no)
 
-No. We do not respect the timeout flag
+No. We do not respect the timeout flag.
 
 ### How to run
 
-cd into ScrabbleTemplate folder
+The project is in the `ScrabbleTemplate` folder. It references the course libraries in `dlls/`, so keep that folder next to it.
 
-    cd ScrabbleTemplate/ScrabbleTemplate
+cd into the ScrabbleTemplate folder
+
+    cd ScrabbleTemplate
 
 run the program
 

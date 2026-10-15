@@ -57,7 +57,7 @@
                             | _ -> Success (List.item pos s.word |> fst, s))
 
     let pointValue (pos : int) : SM<int> =
-         S (fun (s:State) -> match s with
+        S (fun (s:State) -> match s with
                             | _ when pos > s.word.Length-1 || pos<0 -> (Failure (IndexOutOfBounds pos))
                             | _ -> Success (List.item pos s.word |> snd, s))
 
